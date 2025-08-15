@@ -1,0 +1,40 @@
+# Redis Configuration
+image:
+  # Docker image configuration
+  repository: redis
+  # Image tag (defaults to "latest")
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Cluster configuration
+# Number of replica pods
+replicas: 2
+
+# Resource configuration
+resources:
+  master:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  replica:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Storage configuration
+persistence:
+  enabled: false
+  storageClass: ""
+  size: 8Gi
+
+# Security configuration
+security:
+  password: ""
+  # If password is empty, this will be used to generate a random password
+  useRandomPassword: true

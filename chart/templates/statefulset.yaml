@@ -1,0 +1,143 @@
+{{- $fullName := include "pm-cb-redis.fullname" . -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $fullName }}-master
+  labels:
+    {{- include "pm-cb-redis.labels" . | nindent 4 }}
+    role: master
+spec:
+  serviceName: {{ $fullName }}-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pm-cb-redis.selectorLabels" . | nindent 6 }}
+      role: master
+  template:
+    metadata:
+      labels:
+        {{- include "pm-cb-redis.selectorLabels" . | nindent 8 }}
+        role: master
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+          runAsNonRoot: true
+          runAsUser: 999
+        image: "{{ .Values.image.repository }}:{{ default (ternary "latest" "main" (not .Values.image.useValkey)) .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+          {{- if .Values.image.useValkey }}
+          - valkey-server
+          {{- else }}
+          - redis-server
+          {{- end }}
+        args:
+          - "--requirepass"
+          - "$(REDIS_PASSWORD)"
+          - "--masterauth"
+          - "$(REDIS_PASSWORD)"
+          - "--dir"
+          - "/data"
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ $fullName }}
+              key: redis-password
+        ports:
+        - name: redis
+          containerPort: 6379
+        resources:
+          {{- toYaml .Values.resources.master | nindent 10 }}
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        emptyDir: {}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $fullName }}-replica
+  labels:
+    {{- include "pm-cb-redis.labels" . | nindent 4 }}
+    role: replica
+spec:
+  serviceName: {{ $fullName }}-replica
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      {{- include "pm-cb-redis.selectorLabels" . | nindent 6 }}
+      role: replica
+  template:
+    metadata:
+      labels:
+        {{- include "pm-cb-redis.selectorLabels" . | nindent 8 }}
+        role: replica
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+          runAsNonRoot: true
+          runAsUser: 999
+        image: "{{ .Values.image.repository }}:{{ default (ternary "latest" "main" (not .Values.image.useValkey)) .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+          {{- if .Values.image.useValkey }}
+          - valkey-server
+          {{- else }}
+          - redis-server
+          {{- end }}
+        args:
+          - "--replicaof"
+          - "$(MASTER_HOST)"
+          - "$(MASTER_PORT)"
+          - "--requirepass"
+          - "$(REDIS_PASSWORD)"
+          - "--masterauth"
+          - "$(REDIS_PASSWORD)"
+          - "--dir"
+          - "/data"
+        env:
+        - name: MASTER_HOST
+          value: "{{ $fullName }}-master"
+        - name: MASTER_PORT
+          value: "6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ $fullName }}
+              key: redis-password
+        ports:
+        - name: redis
+          containerPort: 6379
+        resources:
+          {{- toYaml .Values.resources.replica | nindent 10 }}
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        emptyDir: {}

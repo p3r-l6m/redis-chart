@@ -1,0 +1,37 @@
+# Helm
+*.tgz
+charts/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+
+# Kubernetes generated
+kubeconfig
+*.kubeconfig
+
+# Dependencies
+node_modules/
+vendor/
+
+# Test results
+coverage/
+junit.xml
+test-results/

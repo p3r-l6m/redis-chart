@@ -1,0 +1,52 @@
+{{- $fullName := include "pm-cb-redis.fullname" . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-master
+  labels:
+    {{- include "pm-cb-redis.labels" . | nindent 4 }}
+    role: master
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: redis
+    protocol: TCP
+    name: redis
+  selector:
+    {{- include "pm-cb-redis.selectorLabels" . | nindent 4 }}
+    role: master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-replica
+  labels:
+    {{- include "pm-cb-redis.labels" . | nindent 4 }}
+    role: replica
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: redis
+    protocol: TCP
+    name: redis
+  selector:
+    {{- include "pm-cb-redis.selectorLabels" . | nindent 4 }}
+    role: replica
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-headless
+  labels:
+    {{- include "pm-cb-redis.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+  - port: 6379
+    targetPort: redis
+    protocol: TCP
+    name: redis
+  selector:
+    {{- include "pm-cb-redis.selectorLabels" . | nindent 4 }}
