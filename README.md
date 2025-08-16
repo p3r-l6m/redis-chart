@@ -1,4 +1,6 @@
-# Redis Helm Chart
+# A Helm chart for Redis with master-replica configuration
+
+A Helm chart for deploying Redis in a master-replica configuration. This chart sets up a Redis cluster with one master and configurable number of replicas, supporting persistence, password authentication, and resource management. Perfect for production deployments requiring high availability and data replication.
 
 Repository structure:
 ```
@@ -42,7 +44,6 @@ The following table lists the configurable parameters and their default values:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-
 | `image.repository` | Image repository | `redis` |
 | `image.tag` | Image tag (automatically set) | `""` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
