@@ -1,22 +1,22 @@
-{{- $fullName := include "pm-cb-redis.fullname" . -}}
+{{- $fullName := include "redis.fullname" . -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ $fullName }}-master
   labels:
-    {{- include "pm-cb-redis.labels" . | nindent 4 }}
+    {{- include "redis.labels" . | nindent 4 }}
     role: master
 spec:
   serviceName: {{ $fullName }}-headless
   replicas: 1
   selector:
     matchLabels:
-      {{- include "pm-cb-redis.selectorLabels" . | nindent 6 }}
+      {{- include "redis.selectorLabels" . | nindent 6 }}
       role: master
   template:
     metadata:
       labels:
-        {{- include "pm-cb-redis.selectorLabels" . | nindent 8 }}
+        {{- include "redis.selectorLabels" . | nindent 8 }}
         role: master
     spec:
       securityContext:
@@ -34,21 +34,17 @@ spec:
             type: RuntimeDefault
           runAsNonRoot: true
           runAsUser: 999
-        image: "{{ .Values.image.repository }}:{{ default (ternary "latest" "main" (not .Values.image.useValkey)) .Values.image.tag }}"
+        image: "{{ .Values.image.repository }}:{{ default "latest" .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command:
-          {{- if .Values.image.useValkey }}
-          - valkey-server
-          {{- else }}
-          - redis-server
-          {{- end }}
+        - redis-server
         args:
-          - "--requirepass"
-          - "$(REDIS_PASSWORD)"
-          - "--masterauth"
-          - "$(REDIS_PASSWORD)"
-          - "--dir"
-          - "/data"
+        - "--requirepass"
+        - "$(REDIS_PASSWORD)"
+        - "--masterauth"
+        - "$(REDIS_PASSWORD)"
+        - "--dir"
+        - "/data"
         env:
         - name: REDIS_PASSWORD
           valueFrom:
@@ -84,19 +80,19 @@ kind: StatefulSet
 metadata:
   name: {{ $fullName }}-replica
   labels:
-    {{- include "pm-cb-redis.labels" . | nindent 4 }}
+    {{- include "redis.labels" . | nindent 4 }}
     role: replica
 spec:
   serviceName: {{ $fullName }}-replica
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      {{- include "pm-cb-redis.selectorLabels" . | nindent 6 }}
+      {{- include "redis.selectorLabels" . | nindent 6 }}
       role: replica
   template:
     metadata:
       labels:
-        {{- include "pm-cb-redis.selectorLabels" . | nindent 8 }}
+        {{- include "redis.selectorLabels" . | nindent 8 }}
         role: replica
     spec:
       securityContext:
@@ -114,27 +110,23 @@ spec:
             type: RuntimeDefault
           runAsNonRoot: true
           runAsUser: 999
-        image: "{{ .Values.image.repository }}:{{ default (ternary "latest" "main" (not .Values.image.useValkey)) .Values.image.tag }}"
+        image: "{{ .Values.image.repository }}:{{ default "latest" .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command:
-          {{- if .Values.image.useValkey }}
-          - valkey-server
-          {{- else }}
-          - redis-server
-          {{- end }}
+        - redis-server
         args:
-          - "--replicaof"
-          - "$(MASTER_HOST)"
-          - "$(MASTER_PORT)"
-          - "--requirepass"
-          - "$(REDIS_PASSWORD)"
-          - "--masterauth"
-          - "$(REDIS_PASSWORD)"
-          - "--dir"
-          - "/data"
+        - "--replicaof"
+        - "$(MASTER_HOST)"
+        - "$(MASTER_PORT)"
+        - "--requirepass"
+        - "$(REDIS_PASSWORD)"
+        - "--masterauth"
+        - "$(REDIS_PASSWORD)"
+        - "--dir"
+        - "/data"
         env:
         - name: MASTER_HOST
-          value: "{{ $fullName }}-master"
+          value: {{ $fullName }}-master
         - name: MASTER_PORT
           value: "6379"
         - name: REDIS_PASSWORD
@@ -150,6 +142,18 @@ spec:
         volumeMounts:
         - name: redis-data
           mountPath: /data
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: {{ .Values.persistence.storageClass }}
+      resources:
+        requests:
+          storage: {{ .Values.persistence.size }}
+  {{- else }}
       volumes:
       - name: redis-data
         emptyDir: {}
+  {{- end }}
